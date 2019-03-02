@@ -297,6 +297,34 @@ void loop()
   }
 }
 
+
+
+//sketch 07-04  ===端口中断===改变闪灯节奏===
+
+const int interruptPin = 2;
+const int ledPin = 13;
+int period = 500;
+
+void setup()
+{
+  pinMode(ledPin, OUTPUT);
+  pinMode(interruptPin, INPUT_PULLUP);
+  attachInterrupt(0, goFast, FALLING);// 端口中断 下降沿中断
+}
+
+void loop() 
+{
+  digitalWrite(ledPin, HIGH);
+  delay(period);
+  digitalWrite(ledPin, LOW);
+  delay(period);  
+}
+
+// 端口中断函数 改变闪灯节奏
+void goFast()
+{
+  period = 100;
+}
 ```
 
 模拟量测量
@@ -320,6 +348,21 @@ void loop()
   Serial.println(voltage);
   delay(500);
 }
+
+
+```
+
+Arduino音乐键盘tone函数
+
+```c
+//sketch 07-03
+void setup()
+{
+  tone(4, 500);
+}
+void loop() {}
+
+
 
 
 ```
@@ -462,6 +505,90 @@ void flashDotOrDash(char dotOrDash)
 
 
 
+// sketch 8-01 ====内存拷贝=====串口控制=====
+
+const int ledPin = 13;
+const int dotDelay = 200;
+
+const int maxLen = 6; // including null on the end
+
+PROGMEM const char letters[26][maxLen] = {
+  ".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..",    // A-I
+  ".---", "-.-", ".-..", "--", "-.", "---", ".--.", "--.-", ".-.",  // J-R
+  "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.."          // S-Z
+};
+
+
+PROGMEM const char numbers[10][maxLen] = {
+  "-----", ".----", "..---", "...--", "....-", ".....", "-....", "--...", "---..", "----."
+};
+
+void setup()                 
+{
+  pinMode(ledPin, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop()                    
+{
+  char ch;
+  char sequence[maxLen];
+  if (Serial.available() > 0)
+  {
+    ch = Serial.read();
+    if (ch >= 'a' && ch <= 'z')
+    {
+      memcpy_P(&sequence, letters[ch - 'a'], maxLen);// 内存拷贝
+      flashSequence(sequence);
+    }
+    else if (ch >= 'A' && ch <= 'Z')
+    {
+      memcpy_P(&sequence, letters[ch - 'A'], maxLen);
+      flashSequence(sequence);
+    }
+    else if (ch >= '0' && ch <= '9')
+    {
+      memcpy_P(&sequence, numbers[ch - '0'], maxLen);
+      flashSequence(sequence);
+    }
+    else if (ch == ' ')
+    {
+      delay(dotDelay * 4);  // gap between words  
+    }
+  }
+}
+
+void flashSequence(char* sequence)
+{
+  int i = 0;
+  while (sequence[i] != NULL)
+  {
+    flashDotOrDash(sequence[i]);
+    i++;
+  }
+  delay(dotDelay * 3);    // gap between letters
+}
+
+void flashDotOrDash(char dotOrDash)
+{
+  digitalWrite(ledPin, HIGH);
+  if (dotOrDash == '.')
+  {
+    delay(dotDelay);           
+  }
+  else // must be a dash
+  {
+    delay(dotDelay * 3);           
+  }
+  digitalWrite(ledPin, LOW);    
+  delay(dotDelay); // gap between flashes
+}
+
+
+
+
+
+
 //sketch 6-01    =======串口控制 灯 开关====
 const int outPin = 3;
 
@@ -520,19 +647,240 @@ void loop()
   delay(1000);
 }
 
+
+
+//sketch 07-01  === 打印随机数==========
+void setup()
+{
+  Serial.begin(9600);
+  randomSeed(analogRead(0)); // 随机数种子
+}
+
+void loop()
+{
+  int number = random(1, 7);
+  Serial.println(number);
+  delay(500); 
+}
+
+
 ```
 
 
-## 
+## flash 闪存 内存 rom 内存读写
 ```c
+// sketch 08-02  ==== 串口读数据 写入内存=======
+#include <EEPROM.h>
+int addr = 0;
+char ch;
+void setup()                 
+{
+  Serial.begin(9600);
+  ch = EEPROM.read(addr);
+}
+void loop()                    
+{
+  if (Serial.available() > 0)
+  {
+    ch = Serial.read();   // 串口读数据
+    EEPROM.write(0, ch);  // 写入内存 单个字节数据
+    Serial.println(ch);
+  }
+  Serial.println(ch);
+  delay(1000);
+}
 
+
+// sketch 08-06 ========清空内存数据=================
+#include <EEPROM.h>
+void setup()                 
+{
+  Serial.begin(9600);
+  Serial.println("Clearing EEPROM");
+  for (int i = 0; i < 1024; i++)
+  {
+    EEPROM.write(i, 0);
+  }
+  Serial.println("EEPROM Cleared");
+}
+void loop() {}
+
+
+// sketch 08-03 ====== 向内存 读写 多字节数据
+#include <avr/eeprom.h>
+void setup() 
+{
+  Serial.begin(9600);
+  int i1 = 123;
+  eeprom_write_block(&i1, 0, 2); // 写2个字节长度的数据
+  int i2 = 0;
+  eeprom_read_block(&i2, 0, 2);
+  Serial.println(i2);
+}
+void loop() {}
+
+
+// sketch 08-04 ======== 写 浮点数===========
+#include <avr/eeprom.h>
+void setup() 
+{
+  Serial.begin(9600);
+  float f1 = 1.23;
+  eeprom_write_block(&f1, 0, 4);// 4字节
+  float f2 = 0;
+  eeprom_read_block(&f2, 0, 4);
+  Serial.println(f2);
+}
+void loop() {}
+
+
+//sketch 08-07  =========浮点数扩大后(量化) 以一个字节数据 进行存储
+#include <EEPROM.h>
+void setup()
+{
+  float tempFloat = 20.75;
+  byte tempByte = (int)(tempFloat * 4); // 浮点数扩大后(量化)
+  EEPROM.write(0, tempByte); // 以一个字节数据 进行存储
+  
+  byte tempByte2 = EEPROM.read(0); // 以一个字节数据 进行读取
+  float temp2 = (float)(tempByte2) / 4; // 反量化
+  Serial.begin(9600);
+  Serial.println("\n\n\n");
+  Serial.println(temp2);
+}
+void loop(){}
+
+
+// sketch 08-05 =============内存存储 字符串 密码数组
+#include <avr/eeprom.h>
+const int maxPasswordSize = 20; // 数组长度
+char password[maxPasswordSize]; // 字符串 密码数组
+
+void setup() 
+{
+  eeprom_read_block(&password, 0, maxPasswordSize);
+  Serial.begin(9600);
+}
+
+void loop() 
+{
+  Serial.print("Your password is:");
+  Serial.println(password);
+  Serial.println("Enter a NEW password");     
+  while (!Serial.available()) {};
+  int n = Serial.readBytesUntil('\n', password, maxPasswordSize);
+  password[n] = '\0';
+  eeprom_write_block(password, 0, maxPasswordSize);  // 写 字符串 密码数组
+  Serial.print("Saved Password: ");
+  Serial.println(password);
+}
 
 ```
 
 
 
-## 
+##  显示屏 
 ```c
+// sketch 09-01 USB Message Board   LCD==============================
+#include <LiquidCrystal.h>
+//            lcd(RS E  D4 D5 D6 D7) // 各端口=====
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+/*
+其他接口形式
+ LiquidCrystal(rs, rw, enable, d4, d5, d6, d7)
+ LiquidCrystal(rs, enable, d0, d1, d2, d3, d4, d5, d6, d7)
+ LiquidCrystal(rs, rw, enable, d0, d1, d2, d3, d4, d5, d6, d7)
+*/
+int numRows = 2;
+int numCols = 16;
+/*
+begin()——定义LCD的长宽（n列×n行），格式lcd.begin(cols, rows)
+ clear()——清空LCD，格式lcd.clear()
+ home()——把光标移回左上角，即从头开始输出，格式lcd.home()
+ setCursor()——移动光标到特定位置，格式lcd.setCursor(col, row)
+ write()——在屏幕上显示内容（必须是一个变量，如”Serial.read()”），格式lcd.write(data)
+ print()——在屏幕上显示内容（字母、字符串，等等），格式lcd.print(data)
+ lcd.print(data, BASE)
+ cursor()——显示光标（一条下划线），格式lcd.cursor()
+ noCursor()——隐藏光标，格式lcd.noCursor()
+ blink()——闪烁光标，格式lcd.blink()
+ noBlink()——光标停止闪烁，格式lcd.noBlink()
+ display()——（在使用noDisplay()函数关闭显示后）打开显示（并恢复原来内容），格式lcd.display()
+ noDisplay()——关闭显示，但不会丢失原来显示的内容，格式为lcd.noDisplay()
+ scrollDisplayLeft()——把显示的内容向左滚动一格，格式lcd.scrollDisplayLeft()
+ scrollDisplayRight()——把显示的内容向右滚动一格，格式为lcd.scrollDisplayRight()
+ autoscroll()——打开自动滚动，这使每个新的字符出现后，原有的字符都移动一格：如果字符一开始从左到右（默认），那么就往左移动一格，否则就向右移动，格式lcd.autoscroll()
+ noAutoscroll()——关闭自动滚动，格式lcd.noAutoscroll()
+ leftToRight()——从左往右显示，也就是说显示的字符会从左往右排列（默认），但屏幕上已经有的字符不受影响，格式lcd.leftToRight()
+ rightToLeft()——从右往左显示，格式lcd.rightToLeft()
+ createChar()——自造字符，最多5×8像素，编号0-7，字符的每个像素显示与否由数组里的数（0-不显示，1-显示）决定，格式lcd.createChar(num, data)，有点难理解，可以看一个例子
+*/
+void setup()
+{
+  Serial.begin(9600);
+  
+  lcd.begin(numRows, numCols);
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Arduino");
+  lcd.setCursor(0,1);
+  lcd.print("Rules");
+}
+
+void loop()
+{
+  if (Serial.available() > 0) 
+  {
+    char ch = Serial.read();
+    if (ch == '#')
+    {
+      lcd.clear();
+    }
+    else if (ch == '/')
+    {
+      // new line
+      lcd.setCursor(0, 1);
+    }
+    else
+    {
+      lcd.write(ch);
+    }
+  }
+}
+
+
+// sketch 09_02 ====I2C(SSD1306)驱动0.96寸12864 OLED========
+
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+Adafruit_SSD1306 display(4); // pick an unused pin
+
+void setup()   
+{                
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);  // may need to change this
+  display.setTextSize(4);
+  display.setTextColor(WHITE);
+}
+
+void loop() 
+{
+  static int count = 0;
+  display.clearDisplay();
+  display.drawRoundRect(0, 0, 127, 63, 8, WHITE);
+  display.setCursor(20,20);
+  display.print(count);
+  display.display();
+  count ++;
+  if (count > 9999)
+  {
+    count = 0;
+  }
+  delay(1000);
+}
+
 
 
 ```
