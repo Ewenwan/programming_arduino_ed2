@@ -887,599 +887,706 @@ void loop()
 
 
 
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
+##  物联网专题  Ethernet（以太网） 
+```c
+// sketch 10-01 DHCP ==================动态ip访问======
+#include <SPI.h>
+#include <Ethernet.h>
+// MAC address just has to be unique. This should work
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+
+EthernetServer server(80);
+
+void setup()
+{
+  Serial.begin(9600);
+  Ethernet.begin(mac);
+  server.begin();
+  Serial.print("Server started on: ");
+  Serial.println(Ethernet.localIP());
+}
+
+void loop()
+{
+  // listen for incoming clients
+  EthernetClient client = server.available();
+  if (client) 
+  {
+    while (client.connected()) 
+    {
+      // send a standard http response header
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: text/html");
+      client.println();
+      
+      // send the body
+      client.println("<html><body>");
+      client.println("<h1>Arduino Server</h1>");
+      client.print("<p>A0="); 
+      client.print(analogRead(0)); 
+      client.println("</p>"); 
+      client.print("<p>millis="); 
+      client.print(millis()); 
+      client.println("</p>"); 
+      client.println("</body></html>");
+      client.stop();
+    }
+    delay(1);
+  }
+}
+
+
+// sketch 10-01 Static IP  ====== 静态ip访问=================================
+#include <SPI.h>
+#include <Ethernet.h>
+// MAC address just has to be unique. This should work
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+// The IP address will be dependent on your local network:
+byte ip[] = { 192, 168, 1, 30 };
+
+EthernetServer server(80);
+
+void setup()
+{
+  Ethernet.begin(mac, ip);
+  server.begin();
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  // listen for incoming clients
+  EthernetClient client = server.available();
+  if (client) 
+  {
+    while (client.connected()) 
+    {
+      // send a standard http response header
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: text/html");
+      client.println();
+      
+      // send the body
+      client.println("<html><body>");
+      client.println("<h1>Arduino Server</h1>");
+      client.print("<p>A0="); 
+      client.print(analogRead(0)); 
+      client.println("</p>"); 
+      client.print("<p>millis="); 
+      client.print(millis()); 
+      client.println("</p>"); 
+      client.println("</body></html>");
+      client.stop();
+    }
+    delay(1);
+  }
+}
+
+
+
+// sketch 10-02 Web Controlled Arduino   动态IP WEB远程控制 终端arduino
+
+#include <SPI.h>
+#include <Ethernet.h>
+
+// MAC address just has to be unique. This should work
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+
+EthernetServer server(80);
+
+int numPins = 5;
+int pins[] = {3, 4, 5, 6, 7};
+int pinState[] = {0, 0, 0, 0, 0};
+char line1[100];
+
+void setup()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+     pinMode(pins[i], OUTPUT);
+  }
+  Serial.begin(9600);
+  Ethernet.begin(mac);
+  server.begin();
+  Serial.print("Server started on: ");
+  Serial.println(Ethernet.localIP());
+}
+
+void loop()
+{
+  EthernetClient client = server.available();
+  if (client) 
+  {
+    while (client.connected()) 
+    {
+      readHeader(client);
+      if (! pageNameIs("/"))
+      {
+        client.stop();  
+        return;
+      }
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: text/html");
+      client.println();
+
+      // send the body
+      client.println("<html><body>");
+      client.println("<h1>Output Pins</h1>");
+      client.println("<form method='GET'>");  
+      setValuesFromParams();
+      setPinStates();
+      for (int i = 0; i < numPins; i++)
+      {
+         writeHTMLforPin(client, i);
+      }
+      client.println("<input type='submit' value='Update'/>");
+      client.println("</form>");
+      client.println("</body></html>");
+
+      client.stop();            
+    }
+  }
+}
+
+void writeHTMLforPin(EthernetClient client, int i)
+{
+  client.print("<p>D");
+  client.print(pins[i]);  
+  client.print(" <select name='");
+  client.print(i);
+  client.println("'>");
+  client.print("<option value='0'");
+  if (pinState[i] == 0)
+  {
+    client.print(" selected");
+  }
+  client.println(">Off</option>");
+  client.print("<option value='1'");
+  if (pinState[i] == 1)
+  {
+    client.print(" selected");
+  }
+  client.println(">On</option>");
+  client.println("</select></p>");  
+}
+
+void setPinStates()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+     digitalWrite(pins[i], pinState[i]);
+  }
+}
+
+void setValuesFromParams()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+    pinState[i] = valueOfParam(i + '0');
+  }
+}
+
+void readHeader(EthernetClient client)
+{
+  // read first line of header
+  char ch;
+  int i = 0;
+  while (ch != '\n')
+  {
+    if (client.available())
+    {
+      ch = client.read();
+      line1[i] = ch;
+      i ++;
+    }
+  }
+  line1[i] = '\0'; 
+  Serial.println(line1);
+}
+
+boolean pageNameIs(char* name)
+{
+   // page name starts at char pos 4
+   // ends with space
+   int i = 4;
+   char ch = line1[i];
+   while (ch != ' ' && ch != '\n' && ch != '?')
+   {
+     if (name[i-4] != line1[i])
+     {
+       return false;
+     }
+     i++;
+     ch = line1[i];
+   }
+   return true;
+}
+
+int valueOfParam(char param)
+{
+  for (int i = 0; i < strlen(line1); i++)
+  {
+    if (line1[i] == param && line1[i+1] == '=')
+    {
+      return (line1[i+2] - '0');
+    }
+  }
+  return 0;
+}
+
+
+
+// sketch 10-02 Internet Pins ====== 静态ip web远程控制 终端 arduino==============
+
+#include <SPI.h>
+#include <Ethernet.h>
+
+// MAC address just has to be unique. This should work
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+// The IP address will be dependent on your local network:
+byte ip[] = { 192, 168, 1, 30 };
+EthernetServer server(80);
+
+int numPins = 5;
+int pins[] = {3, 4, 5, 6, 7};
+int pinState[] = {0, 0, 0, 0, 0};
+char line1[100];
+
+void setup()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+     pinMode(pins[i], OUTPUT);
+  }
+  Serial.begin(9600);
+  Ethernet.begin(mac, ip);
+  server.begin();
+}
+
+void loop()
+{
+  EthernetClient client = server.available();
+  if (client) 
+  {
+    while (client.connected()) 
+    {
+      readHeader(client);
+      if (! pageNameIs("/"))
+      {
+        client.stop();  
+        return;
+      }
+      client.println("HTTP/1.1 200 OK");
+      client.println("Content-Type: text/html");
+      client.println();
+
+      // send the body
+      client.println("<html><body>");
+      client.println("<h1>Output Pins</h1>");
+      client.println("<form method='GET'>");  
+      setValuesFromParams();
+      setPinStates();
+      for (int i = 0; i < numPins; i++)
+      {
+         writeHTMLforPin(client, i);
+      }
+      client.println("<input type='submit' value='Update'/>");
+      client.println("</form>");
+      client.println("</body></html>");
+
+      client.stop();            
+    }
+  }
+}
+
+void writeHTMLforPin(EthernetClient client, int i)
+{
+  client.print("<p>D");
+  client.print(pins[i]);  
+  client.print(" <select name='");
+  client.print(i);
+  client.println("'>");
+  client.print("<option value='0'");
+  if (pinState[i] == 0)
+  {
+    client.print(" selected");
+  }
+  client.println(">Off</option>");
+  client.print("<option value='1'");
+  if (pinState[i] == 1)
+  {
+    client.print(" selected");
+  }
+  client.println(">On</option>");
+  client.println("</select></p>");  
+}
+
+void setPinStates()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+     digitalWrite(pins[i], pinState[i]);
+  }
+}
+
+void setValuesFromParams()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+    pinState[i] = valueOfParam(i + '0');
+  }
+}
+
+void readHeader(EthernetClient client)
+{
+  // read first line of header
+  char ch;
+  int i = 0;
+  while (ch != '\n')
+  {
+    if (client.available())
+    {
+      ch = client.read();
+      line1[i] = ch;
+      i ++;
+    }
+  }
+  line1[i] = '\0'; 
+  Serial.println(line1);
+}
+
+boolean pageNameIs(char* name)
+{
+   // page name starts at char pos 4
+   // ends with space
+   int i = 4;
+   char ch = line1[i];
+   while (ch != ' ' && ch != '\n' && ch != '?')
+   {
+     if (name[i-4] != line1[i])
+     {
+       return false;
+     }
+     i++;
+     ch = line1[i];
+   }
+   return true;
+}
+
+int valueOfParam(char param)
+{
+  for (int i = 0; i < strlen(line1); i++)
+  {
+    if (line1[i] == param && line1[i+1] == '=')
+    {
+      return (line1[i+2] - '0');
+    }
+  }
+  return 0;
+}
+```
+
+##   无线网模块 
+```c
+// sketch 10-03. Node MCU Basic Web Server
+
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+
+const char* ssid = "my-network-name"; // 无线网名称
+const char* password = "my_password"; // 无线网密码
+
+ESP8266WebServer server(80);
+
+void handleRoot()
+{
+  String message = "<html><body>\n";
+  message += "<h1>Arduino Server</h1>\n";
+  message += "<p>A0="; 
+  message += analogRead(A0); 
+  message += "</p>"; 
+  message += "<p>millis="; 
+  message += millis(); 
+  message += "</p>"; 
+  message += "</html></body>\n";
+  server.send(200, "text/html", message);
+}
+
+void connectToWiFi()
+{
+  Serial.print("\n\nConnecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected");  
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  connectToWiFi();
+
+  server.on("/", handleRoot);
+
+  server.begin();
+  Serial.println("HTTP server started");
+}
+
+void loop()
+{
+  server.handleClient();
+}
+
+
+
+
+// sketch 10-04 Web Controlled Node MCU ==== 无线网 控制终端 arduino==========
+
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+
+const char* ssid = "my-network-name";
+const char* password = "my_password";
+
+int numPins = 5;
+char* pinNames[] = {"D5", "D6", "D7", "D8", "D9"};
+int pins[] = {D5, D6, D7, D8, D9};
+int pinState[] = {0, 0, 0, 0, 0};
+
+ESP8266WebServer server(80);
+
+void setPinStates()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+     digitalWrite(pins[i], pinState[i]);
+  }
+}
+
+void setValuesFromParams()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+    pinState[i] = server.arg(i).toInt();
+  }
+}
+
+void connectToWiFi()
+{
+  Serial.print("\n\nConnecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected");  
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void handleRoot()
+{
+  char buff[1000];
+  Serial.println("Got a Request");
+  setValuesFromParams();
+  setPinStates();
+  
+  strcat(buff, "<html><body>\n");
+  strcat(buff, "<h1>Output Pins</h1>\n");
+  strcat(buff, "<form method='GET'>\n"); 
+  for (int i = 0; i < numPins; i++)
+  {
+    strcat(buff, "<p>");
+    strcat(buff, pinNames[i]);
+    strcat(buff, " <select name='");
+    char indexStr[10];
+    sprintf(indexStr, "%d", i);
+    strcat(buff, indexStr);
+    strcat(buff, "'><option value='0'");
+    if (pinState[i] == 0)
+    {
+      strcat(buff, " selected");
+    }
+    strcat(buff, ">Off</option>");
+    strcat(buff, "<option value='1'");
+    if (pinState[i] == 1)
+    {
+      strcat(buff, " selected");
+    }
+    strcat(buff, ">On</option></select></p>\n");
+  }
+  strcat(buff, "<input type='submit' value='Update'/>");
+  strcat(buff, "</form></html></body>\n");
+  server.send(200, "text/html", buff);
+}
+
+
+void setup()
+{
+  for (int i = 0; i < numPins; i++)
+  {
+     pinMode(pins[i], OUTPUT);
+  }
+  Serial.begin(115200);
+  
+  connectToWiFi();
+  
+  server.on("/", handleRoot);
+
+  server.begin();
+  Serial.println("HTTP server started");
+}
+
+void loop()
+{
+  server.handleClient();
+}
+```
+
+
+
+## IFTTT 表示如果在“this”上发生了某些事情，那么我们需要在“that”上做一些事情。
+```c
+// sketch 10-05 IFTTT
+#include <SPI.h>
+#include <Ethernet.h>
+
+
+// MAC address just has to be unique. This should work
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+
+const char* key = "c1AsQq_qsQVTSO5-6NASqg";
+const char* host = "maker.ifttt.com";
+const int httpPort = 80;
+const long sendPeriod = 60000L; // 1 minute
+
+EthernetClient client;
+
+void setup()
+{
+  Serial.begin(9600);
+  Ethernet.begin(mac);
+}
+
+void sendToIFTTT(int reading)
+{
+  client.stop(); // for second time around the loop
+  Serial.print("connecting to ");
+  Serial.println(host);
+  if (!client.connect(host, httpPort)) {
+    Serial.println("connection failed");
+    return;
+  }
+  
+  String url = "/trigger/arduino_spoke/with/key/";
+  url += key;
+  url += "?value1=" + String(reading);
+
+  String req = String("GET ") + url + " HTTP/1.1\r\n" +  
+               "Host: " + host + "\r\n" +
+               "Connection: close\r\n\r\n";
+  Serial.println(req);
+  client.print(req);
+}
+
+void loop() 
+{
+  static long lastReadingTime = 0;
+  long now = millis();
+  if (now > lastReadingTime + sendPeriod)
+  {
+    int reading = analogRead(A0);
+    sendToIFTTT(reading);
+    lastReadingTime = now;
+  }
+  if (client.available())
+  {
+    Serial.write(client.read());
+  }
+}
+
+
+
+// sketch 10_06=======wifi连接IFTTT=================
+
+#include <ESP8266WiFi.h>
+
+const char* ssid = "my-network-name";
+const char* password = "my_password";
+const char* key = "c1AsQq_qsQVTSO5-6NASqg";
+const char* host = "maker.ifttt.com";
+const int httpPort = 80;
+const long sendPeriod = 10000L; // 1 minute
+
+WiFiClient client;
+
+void connectToWiFi()
+{
+  Serial.print("\n\nConnecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected");  
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void sendToIFTTT(int reading)
+{
+  Serial.print("connecting to ");
+  Serial.println(host);
+
+  if (!client.connect(host, httpPort)) {
+    Serial.println("connection failed");
+    return;
+  }
+  
+  String url = "/trigger/arduino_spoke/with/key/";
+  url += key;
+  url += "?value1=" + String(reading);
+
+  String req = String("GET ") + url + " HTTP/1.1\r\n" +  
+               "Host: " + host + "\r\n" +
+               "Connection: close\r\n\r\n";
+  Serial.println(req);
+  client.print(req);
+}
+
+void setup() 
+{
+  Serial.begin(115200);
+  connectToWiFi();
+}
+
+void loop() 
+{
+  static long lastReadingTime = 0;
+  long now = millis();
+  if (now > lastReadingTime + sendPeriod)
+  {
+    int reading = analogRead(A0);
+    sendToIFTTT(reading);
+    lastReadingTime = now;
+  }
+  if (client.available())
+  {
+    Serial.write(client.read());
+  }
+}
 
 ```
 
 
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
-
-
-## 
-```c
-
-
-```
-
-
-
-## 
-```c
-
-
-```
